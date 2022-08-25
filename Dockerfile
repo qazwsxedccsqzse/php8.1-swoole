@@ -1,6 +1,9 @@
-FROM phusion/baseimage:focal-1.0.0alpha1-amd64
+FROM phusion/baseimage:focal-1.2.0
 CMD ["/sbin/my_init"]
+RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
+curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list > /etc/apt/sources.list.d/mssql-release.list
 RUN apt-get update && apt-get install -y software-properties-common wget tar make libpcre3 libpcre3-dev openssl libssl-dev supervisor
+RUN ACCEPT_EULA=Y apt-get install -y msodbcsql18 && apt-get install -y unixodbc-dev
 WORKDIR /root
 RUN LC_ALL=C.UTF-8 add-apt-repository ppa:ondrej/php && \
 apt-get update && \
@@ -23,10 +26,19 @@ php8.1-dev \
 php8.1-bcmath \
 php8.1-zip \
 php8.1-dom && \
-printf "\n" | pecl install swoole && \
+printf "\n" | wget https://github.com/swoole/swoole-src/archive/v4.8.11.tar.gz && \
+tar zxfv v4.8.11.tar.gz && rm -rf v4.8.11.tar.gz && \
+cd /root/swoole-src-4.8.11 && \
+phpize && ./configure && make clean && make install && \
 pecl install redis && \
-echo "extension=swoole.so" >> /etc/php/8.1/cli/php.ini && \
+pecl install sqlsrv && \
+pecl install pdo_sqlsrv && \
+echo "extension=swoole.so\n" >> /etc/php/8.1/cli/php.ini && \
+printf "; priority=20\nextension=sqlsrv.so\n" > /etc/php/8.1/mods-available/sqlsrv.ini && \
+printf "; priority=30\nextension=pdo_sqlsrv.so\n" > /etc/php/8.1/mods-available/pdo_sqlsrv.ini && \
+phpenmod -v 8.1 sqlsrv pdo_sqlsrv && \
 php -r "readfile('https://getcomposer.org/installer');" > composer-setup.php && \
 php composer-setup.php && \
 php -r "unlink('composer-setup.php');" && \
-mv composer.phar /usr/local/bin/composer
+mv composer.phar /usr/local/bin/composer && \
+cd /root && rm -rf swoole-src-4.8.11
