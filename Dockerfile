@@ -42,3 +42,4 @@ php composer-setup.php && \
 php -r "unlink('composer-setup.php');" && \
 mv composer.phar /usr/local/bin/composer && \
 cd /root && rm -rf swoole-src-4.8.11
+COPY php.ini /etc/php/8.1/cli/
